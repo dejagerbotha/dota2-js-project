@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dota Stats Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #333; /* Charcoal background color */
+            color: #fff; /* Text color: white */
+            margin: 0;
+            padding: 0;
+        }
+        h1, h2 {
+            color: #55aaff; /* Header text color: light blue */
+        }
+        .data-section {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #444; /* Darker background for data sections */
+            border: 1px solid #555;
+        }
+        .hero-tile {
+            display: inline-block;
+            width: 18%; /* Adjust the width as needed */
+            border: 1px solid #555;
+            padding: 10px;
+            margin-right: 1%; /* Adjust the margin as needed */
+            margin-bottom: 10px;
+            background-color: #444; /* Darker background for each hero tile */
+            box-sizing: border-box;
+            text-align: center; /* Center align text */
+            line-height: 1.5; /* Adjust line height if needed */
+        }
+        .hero-info {
+            color: #fff;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-gap: 10px;
+            justify-content: space-around;
+        }
+        .table-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-gap: 10px;
+            justify-content: space-around;
+            margin: 20px;
+        }
+
+        table {
+            width: max-content;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .player-name-cell {
+            white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+        }
+
+        .fixed-width {
+            width: max-content;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dota Stats Dashboard</h1>
+
+    <div class="data-section" id="top5HeroesContainer">
+        <h2>Top 5 Heroes</h2>
+        <div id="top5HeroesContent"></div>
+    </div>
+
+    <div class="data-section" id="top3PlayerHeroesContainer">
+        <h2>Top 3 Player Heroes</h2>
+        <div id="top3PlayerHeroesContent"></div>
+    </div>
+
+    <div class="data-section">
+        <h2>Player Ranking</h2>
+        <div id="playerRanking" class="table-container"></div>
+    </div>
+
+    <div class="data-section">
+        <h2>Player Totals</h2>
+        <div id="playerTotals" class="table-container"></div>
+    </div>
+
+
+    <script>
+    async function displayTop3PlayerHeroes() {
+        const top3PlayerHeroesContent = document.getElementById('top3PlayerHeroesContent');
+
+        try {
+            const response = await fetch('http://localhost:3000/top3heroes');
+            let data = await response.json();
+
+            // Check if data is not null or undefined
+            if (data && Array.isArray(data)) {
+                // Sort data array alphabetically by playerName
+                data.sort((a, b) => a.playerName.localeCompare(b.playerName));
+
+                data.forEach(player => {
+                    const heroTile = document.createElement('div');
+                    heroTile.classList.add('hero-tile');
+
+                    const heroInfo = document.createElement('div');
+                    heroInfo.classList.add('hero-info');
+
+                    // Display player name
+                    heroInfo.innerHTML = `<strong>${player.playerName}</strong><br>`;
+
+                    // Display top 3 heroes for the player as bullet points
+                    heroInfo.innerHTML += '<ul>';
+                    player.top3Heroes.forEach(hero => {
+                        heroInfo.innerHTML += `<li>${hero.heroName} : ${hero.playCount}</li>`;
+                    });
+                    heroInfo.innerHTML += '</ul>';
+
+                    heroTile.appendChild(heroInfo);
+                    top3PlayerHeroesContent.appendChild(heroTile);
+                });
+            } else {
+                console.error('Invalid top 3 player heroes data format.');
+            }
+        } catch (error) {
+            console.error('Error fetching top 3 player heroes data:', error);
+        }
+    }
+
+        async function displayTop5Heroes() {
+            const top5HeroesContent = document.getElementById('top5HeroesContent');
+
+            try {
+                const response = await fetch('http://localhost:3000/top5heroes');
+                const data = await response.json();
+
+                // Check if data is not null or undefined
+                if (data && Array.isArray(data)) {
+                    data.forEach(hero => {
+                        const heroTile = document.createElement('div');
+                        heroTile.classList.add('hero-tile');
+
+                        const heroInfo = document.createElement('div');
+                        heroInfo.classList.add('hero-info');
+                        heroInfo.innerHTML = `<strong>${hero.heroName}</strong><br>Games Played: ${hero.playCount}`;
+                        heroTile.appendChild(heroInfo);
+
+                        top5HeroesContent.appendChild(heroTile);
+                    });
+                } else {
+                    console.error('Invalid top 5 heroes data format.');
+                }
+            } catch (error) {
+                console.error('Error fetching top 5 heroes data:', error);
+            }
+        }
+
+        // Call the functions to display top 5 heroes and top 3 player heroes
+        displayTop5Heroes();
+        displayTop3PlayerHeroes();
+
+        async function displayPlayerRanking() {
+    try {
+        const response = await fetch('http://localhost:3000/getPlayerAverages');
+        const data = await response.json();
+
+        if (data && typeof data === 'object') {
+            const displayNameMap = {
+                'killsAverage': 'Kills Avg',
+                'deathsAverage': 'Deaths Avg',
+                'assistsAverage': 'Assists Avg',
+                'heroDamageAverage': 'Hero Damage Avg',
+                'towerDamageAverage': 'Tower Damage Avg',
+                'heroHealingAverage': 'Hero Healing Avg',
+                'lastHitsAverage': 'Last Hits Avg',
+                'goldPerMinAverage': 'Gold Per Min Avg',
+                'xpPerMinAverage': 'XP Per Min Avg'
+            };
+
+            const playerRankingContainer = document.getElementById('playerRanking');
+            const table = document.createElement('table');
+
+            // Sort players by each average and create rows for each player
+            Object.keys(displayNameMap).forEach(average => {
+                const sortedPlayerNames = Object.keys(data).sort((a, b) => data[b][average] - data[a][average]);
+
+                const row = table.insertRow();
+                const averageCell = row.insertCell();
+                averageCell.textContent = displayNameMap[average];
+
+                sortedPlayerNames.forEach(playerName => {
+                    const cell = row.insertCell();
+                    cell.classList.add('player-name-cell');
+                    cell.innerHTML = `<div>${playerName}</div><div>${data[playerName][average].toFixed(2)}</div>`;
+                });
+            });
+
+            playerRankingContainer.appendChild(table);
+        } else {
+            console.error('Invalid player averages data format.');
+        }
+    } catch (error) {
+        console.error('Error fetching player averages data:', error);
+    }
+}
+
+displayPlayerRanking();
+
+async function displayPlayerTotals() {
+    try {
+        const response = await fetch('http://localhost:3000/getPlayerTotals');
+        const data = await response.json();
+
+        if (data && typeof data === 'object') {
+            const displayNameMap = {
+                'killsTotal': 'Kills Total',
+                'deathsTotal': 'Deaths Total',
+                'assistsTotal': 'Assists Total',
+                'heroDamageTotal': 'Hero Damage Total',
+                'towerDamageTotal': 'Tower Damage Total',
+                'heroHealingTotal': 'Hero Healing Total',
+                'lastHitsTotal': 'Last Hits Total'
+            };
+
+            const playerTotalsContainer = document.getElementById('playerTotals');
+            playerTotalsContainer.innerHTML = ''; // Clear existing content
+
+            const table = document.createElement('table');
+
+            // Sort players by each total and create rows for each player
+            Object.keys(displayNameMap).forEach(total => {
+                const sortedPlayerNames = Object.keys(data).sort((a, b) => data[b][total] - data[a][total]);
+
+                const row = table.insertRow();
+                const totalCell = row.insertCell();
+                totalCell.textContent = displayNameMap[total];
+
+                // Sort players by each total and create rows for each player
+                sortedPlayerNames.forEach(playerName => {
+                    const cell = row.insertCell();
+                    cell.classList.add('player-name-cell');
+                    const content = `<div>${playerName}</div><div>${data[playerName][total]}</div>`;
+                    cell.innerHTML = content;
+                });
+            });
+
+            // Apply the maximum width for each column
+            Object.keys(displayNameMap).forEach(total => {
+                const cells = table.querySelectorAll(`td:nth-child(${Object.keys(displayNameMap).indexOf(total) + 2})`);
+                cells.forEach(cell => {
+                    cell.style.width = 'max-content';
+                });
+            });
+
+            playerTotalsContainer.appendChild(table);
+        } else {
+            console.error('Invalid player totals data format.');
+        }
+    } catch (error) {
+        console.error('Error fetching player totals data:', error);
+    }
+}
+
+// Call the function to display player totals
+displayPlayerTotals();
+
+
+
+    </script>
+</body>
+</html>
